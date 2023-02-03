@@ -1,0 +1,290 @@
+---
+title: Music and Mental Health Analysis
+subtitle: Data Vizualization Project 2022/2023
+author: "Abner David Nole Orozco - 22187"
+output: 
+  html_document:
+    code_folding: hide
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Introduction
+
+Music therapy, or MT, is the use of music to improve an individual's stress, mood, and overall mental health. MT is also recognized as an evidence-based practice, using music as a catalyst for "happy" hormones such as oxytocin.
+
+**Analysis Goal:** 
+The aim is to see what, if any, correlations exist between music listening habits and effect on mental health symptoms to assist in future investigations and studies.
+
+**Data Sets Used:**
+Music & Mental Health Survey Results comes from Kaggle
+
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(fmsb)
+
+knitr::opts_chunk$set(cache=T)
+
+```
+
+
+# Data retrieval
+
+Reading data into dataframe
+```{r}
+df <- read.csv("mxmh_survey_results.csv")
+```
+
+```{r}
+names(df)
+```
+# Data preparation
+
+**Cleaning data**
+
+```{r}
+sum(is.na(df))
+```
+```{r}
+df <- df %>% drop_na()
+```
+Filtering out hours per day listening to music over 15 hours per day and the limit for Age is 30
+
+```{r}
+new_data <- subset(df, Age <= 30)
+
+new_data <- subset(new_data,Hours.per.day < 15)
+
+new_data <- subset(new_data,select = -c(Timestamp,Permissions))
+```
+
+Changing values for a better visualization
+
+```{r}
+new_data$Primary.streaming.service[new_data$Primary.streaming.service == 'I do not use a streaming service.'] <- 'None'
+new_data$Primary.streaming.service[new_data$Primary.streaming.service == 'Other streaming service'] <- 'Other'
+
+```
+
+
+
+# Data Visualization
+
+**View the different streaming platforms and the count of users**
+
+```{r}
+streaming_platform <- new_data %>% filter(Primary.streaming.service != "") %>% group_by(Primary.streaming.service) %>% summarise(users = n())
+
+ggplot(streaming_platform,aes(x=reorder(Primary.streaming.service, -users) , y = users)) + 
+  geom_col(fill='turquoise3', width = 0.7) + 
+  labs(title = "Popular Streaming Music Services by Users")+
+  xlab("Music Streaming Services") +
+  ylab("Users") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(plot.title = element_text(size = 15, hjust = 0.5, face = "bold")) +
+  theme(axis.title = element_text(size = 13, face = "bold"))
+
+```
+
+>As can be seen, Spotify is the most popular streaming platform with the largest number of users, while Pandora is the least used.
+
+
+**Number of hours participants listened to music per day**
+```{r}
+ggplot(new_data, aes(x=round(Hours.per.day)))+
+  geom_bar(fill='turquoise')+
+  geom_text(aes(label = ..count..), stat = "count",vjust = 1.5, colour = "black")+
+  xlab('Hours per day')+
+  ylab('Participants')+
+  scale_x_continuous(breaks=c(0,2,4,6,8,10,12,14))
+
+  
+```
+
+>Most of the participants listen to music between 1 and 5 hours a day. There are some people who listen to music most of the day. It may be background noise while working or performing other tasks.
+
+**Effect of Music on Participants**
+```{r}
+
+Music_efects <- new_data %>% filter(Music.effects != "") %>% group_by(Music.effects) %>% summarise(users = n()) %>% mutate(percentage = scales::percent(users / sum(users))) 
+
+ggplot(Music_efects, aes(x="", y=users, fill=Music.effects)) +
+  geom_col(color = "black") +
+  coord_polar("y", start=0) +
+  geom_text(aes(y = users, label = percentage), position = position_stack(vjust = 0.5),color = "white")+
+  scale_fill_brewer(palette="Dark2")+
+  ggtitle("Music Effects on Participants") +
+  guides(fill = guide_legend(title = "Music effects"))+
+  theme(plot.title = element_text(size = 15, hjust = 0.5, face = "bold"))+
+  theme_void() 
+
+```
+
+>In general, seventy-seven percent of the participants reported that the music improved their mental health. Twenty-one percent were not affected, but two percent said it worsened their mental health.
+
+**Frequency of Music Genre **
+```{r}
+genre_filter <- new_data[11:26] %>% pivot_longer(cols = everything()) %>%
+  count(name,value) %>% pivot_wider(names_from = value,values_from = n , values_fill = 0)
+
+colnames(genre_filter)[colnames(genre_filter) %in% c("name")] = c("Music_type")
+colnames(genre_filter)[colnames(genre_filter) %in% c("Very frequently")] = c("Very_frequently")
+
+genre_filter_1 =pivot_longer(genre_filter,2:5,names_to="Frequency", values_to="Value")
+
+
+```
+
+```{r}
+
+ggplot(genre_filter_1, aes(x=Music_type, y=Value, fill=Frequency))+
+  geom_bar(position='stack', stat='identity')+
+  theme(text = element_text(size = 13)) +
+  labs(title='Frequency of music genre')+
+  ylab('Participants')+
+  xlab('Music Genre')+
+  scale_fill_manual(values = c("coral","darkolivegreen4","deepskyblue3","chocolate4")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+>The least popular music categories among the participants were gospel, Latin music and K-pop. On the other hand, the most listened to were rock and pop.
+
+
+
+## Relation between Age and Favourite Genre
+
+```{r}
+ggplot(new_data, aes(x = Age, y = Fav.genre)) +
+  geom_point(color = "sienna", size = 3, alpha = 0.2) +
+  ggtitle("Age distribution by genre") +
+  xlab("Age") +
+  ylab("Fav genre")
+```
+
+
+
+>We can observe that the rock genre is listened to by almost all age groups. On the other hand, genres such as Pop and Metal have an age range of 15 to 20 years old.
+
+**Density vs mental health conditions**
+
+```{r}
+music_pivot <- pivot_longer(new_data, 27:30, names_to= 'Mental_illness', values_to='Score') 
+
+ggplot(music_pivot, aes(x=Score, fill = Mental_illness)) +
+  stat_density(geom = "density",alpha = 0.5, size = 1.5)+
+  facet_wrap(~Mental_illness)+
+  theme(strip.text.x = element_text(size = 15),
+        legend.title=element_text(size=15), 
+        legend.text=element_text(size=14)) +
+  xlab('Severity Scale') +
+  ylab('Density') +
+  guides(fill = guide_legend(title = "Mental Illness"))+
+  labs(title='Density about Mental Health Distribution')
+```
+
+
+
+>According to the graph it can be deduced that the density of people suffering from a higher level of anxiety and depression is higher than those suffering from insomnia and OCD.
+
+
+**View the effect per conditions**
+
+**Anxiety**
+
+```{r}
+anxiety_genero_mean <- new_data %>% filter(Anxiety>0) %>% group_by(Fav.genre) %>%   
+  summarize(mean_anxiety = mean(Anxiety)) %>% arrange(Fav.genre)
+
+ggplot(anxiety_genero_mean, aes(x=Fav.genre, y=mean_anxiety)) +
+  geom_segment( aes(x=Fav.genre, xend=Fav.genre, y=0, yend=mean_anxiety)) +
+  geom_point( size=5, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2) +
+  ggtitle("Music effect on Anxiety") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  xlab("Fav genre") +
+  ylab("Anxiety")
+```
+
+
+
+>We observe in the plot that the folk and rock genres are more listened to by people who suffer from a higher than average level of anxiety, while Gospel is the one that presents the lowest level.
+**Depression**
+
+```{r}
+depression_genero_mean <- new_data %>% filter(Depression>0) %>% group_by(Fav.genre) %>%   
+  summarize(mean_depression = mean(Depression))%>% arrange(Fav.genre)
+
+
+
+ggplot(depression_genero_mean, aes(x=Fav.genre, y=mean_depression)) +
+  geom_segment( aes(x=Fav.genre, xend=Fav.genre, y=0, yend=mean_depression), color="black") +
+  geom_point( color="blue", size=4, alpha=0.6) +
+  theme_light() +
+  coord_flip() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks.y = element_blank()
+  ) +
+  ggtitle("Music effect on Depression") +
+  xlab("Fav genre") +
+  ylab("Depression")
+```
+
+
+
+>The graph shows that genres such as hip hop and metal are listened to by people with a high level of depression, while Latin and rap have lower levels.
+
+**Insomnia**
+```{r}
+insomnia_genero_mean <- new_data %>% filter(Insomnia>0) %>% group_by(Fav.genre) %>%   
+  summarize(mean_Insomnia = mean(Insomnia))%>% arrange(Fav.genre)
+
+ggplot(insomnia_genero_mean, aes(x=Fav.genre, y=mean_Insomnia)) +
+  geom_segment( aes(x=Fav.genre, xend=Fav.genre, y=0, yend=mean_Insomnia)) +
+  geom_point( size=5, color="navyblue", fill=alpha("lightblue", 0.3), alpha=0.7, shape=21, stroke=2) +
+  ggtitle("Music effect on Insomnia") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  xlab("Fav genre") +
+  ylab("Insomnia")
+
+```
+
+
+>The graph shows that the Lofi and metal genres are listened to by people with a high level of insomnia, and the gospel genre presents the lowest level of insomnia.
+
+
+**OCD**
+
+```{r}
+ocd_genero_mean <- new_data %>% filter(OCD>0) %>% group_by(Fav.genre) %>%   
+  summarize(mean_OCD= mean(OCD))%>% arrange(Fav.genre)
+
+ggplot(ocd_genero_mean, aes(x=Fav.genre, y=mean_OCD)) +
+  geom_segment( aes(x=Fav.genre, xend=Fav.genre, y=0, yend=mean_OCD), color="black") +
+  geom_point( color="olivedrab", size=4, alpha=0.6) +
+  theme_light() +
+  coord_flip() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks.y = element_blank()
+  ) +
+  ggtitle("Music effect on OCD") +
+  xlab("Fav genre") +
+  ylab("OCD")
+
+```
+
+
+>It is observed that Lofi and Latin are listened to by people with a higher level of OCD, while Gospel and K pop are listened to by people with a lower level of OCD.
+
+# Conclussion
+This project studies the relationships of mental conditions and their most listened or preferred musical genre, obtaining the results we conclude that people can vary in their taste of genres to improve their mental condition as Anxiety, Depression, Insomnia or OCD.

@@ -1,0 +1,88 @@
+ ggplot(new_data, aes(x = Hours.per.day, y = Anxiety)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  ggtitle("Relationship between hours per day spent listening to music and anxiety") +
+  xlab("Hours per day") +
+  ylab("Anxiety")
+
+
+ggplot(df, aes(x = Fav.genre)) +
+  geom_bar(stat = "count") +
+  ggtitle("Distribution of favorite genres") +
+  xlab("Genre") +
+  ylab("Count")
+
+ggplot(data = df, aes(x = Age, y = Hours.per.day)) +
+  geom_point(size = 3, shape = 21, fill = "white", color = "darkblue") +
+  geom_smooth(method = 'lm', color = "purple", se = FALSE, size = 1.5) +
+  ggtitle("Age vs Hours spent on Music Listening")+
+  xlab("Age") +
+  ylab("Hours per day") +
+  theme_minimal() +
+  scale_x_continuous(breaks = seq(10,90,10))+
+  scale_y_continuous(breaks = seq(0,24,4))
+
+ggplot(Music_efects, aes(x="", y=users, fill=Music.effects)) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  geom_text(aes(y = users, label = prop), color = "white", stat = "identity",  vjust = - 2, size = 6)+
+  scale_fill_brewer(palette="Dark2")+
+  ggtitle("Music Effects on Participants") +
+  theme(plot.title = element_text(size = 15, hjust = 0.5, face = "bold"))+
+  theme_void() 
+
+
+ggplot(anxiety_genre, aes(x = Fav.genre, y = Anxiety, color = Music.effects)) +
+  geom_point() +
+ 
+  ggtitle("Anxiety by Music effects and Fav genre") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  xlab("Fav genre") +
+  ylab("Scale of Anxiety")
+
+
+anxiety_genre <- subset(new_data, select = c(Fav.genre, Anxiety, Music.effects))%>%
+filter(Music.effects != "") %>%
+filter(Anxiety > 5)
+
+ggplot(anxiety_genre, aes(x=Fav.genre, fill=Music.effects))+
+  geom_bar(position="stack")+
+  ylab('Participants')+
+  labs(title='Music effect on Anxiety')+
+   theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  scale_fill_manual(values = c("lightsalmon4","lightseagreen","lightskyblue"))+
+  theme(text = element_text(size = 13))
+
+
+
+ggplot(anxiety_genero, aes(x = Fav.genre, y = Anxiety)) +
+  geom_point(color = "olivedrab", size = 3, alpha = 0.1) +
+  ggtitle("Age distribution by genre") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  scale_y_continuous(breaks=c(3,5,7,10))+
+  xlab("Age") +
+  ylab("Fav genre")
+
+
+ggplot(depression_genero_mean, aes(x = Fav.genre, y = mean_depression)) +
+  geom_bar(stat = "identity",fill = "lightblue") +
+  ggtitle("Mean anxiety by genre") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  xlab("Fav genre") +
+  ylab("Mean anxiety")
+
+
+usando los puntos
+
+anxiety_genero <- subset(new_data,select = c(Fav.genre,Anxiety)) %>% 
+  filter(Anxiety>0) %>%   mutate(severity = case_when(Anxiety <= 4 ~ "low", 
+                              Anxiety <= 7 ~ "medium", 
+                              Anxiety > 7 ~ "severe"))
+
+ggplot(anxiety_genero, aes(x = Fav.genre, y = Anxiety)) +
+  geom_point(color = "olivedrab", size = 3, alpha = 0.1) +
+  ggtitle("Age distribution by genre") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  scale_y_continuous(breaks=c(3,5,7,10))+
+  xlab("Age") +
+  ylab("Fav genre")
